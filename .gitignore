@@ -1,0 +1,36 @@
+# Go
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go modules
+go.sum
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
+logs/
+tmp/
+*.pid
+
+# Docker
+.env
+docker/data/
+docker/volumes/
+.docker/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+*.swp
