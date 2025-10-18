@@ -1,0 +1,116 @@
+version: "3.9"
+
+services:
+  # ---------------------------
+  # 🐬 MYSQL DATABASE
+  # ---------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: microservices
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3307:3306" # 👈 altere aqui
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - micro_net
+
+  # ---------------------------
+  # 🐇 RABBITMQ
+  # ---------------------------
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672" # Comunicação entre microsserviços
+      - "15672:15672" # Painel de administração
+    networks:
+      - micro_net
+
+  # ---------------------------
+  # 🔍 JAEGER (Tracing)
+  # ---------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    container_name: jaeger
+    restart: always
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317" # Recebe traces via OTLP
+    networks:
+      - micro_net
+
+  # ---------------------------
+  # 📈 PROMETHEUS
+  # ---------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - micro_net
+
+  # ---------------------------
+  # 📊 GRAFANA
+  # ---------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    networks:
+      - micro_net
+
+  # ---------------------------
+  # 🚀 MICROSERVIÇOS EM GO
+  # ---------------------------
+  user:
+    build: ./services/user
+    container_name: user-service
+    depends_on:
+      - mysql
+      - rabbitmq
+    ports:
+      - "50051:50051"
+    networks:
+      - micro_net
+
+  order:
+    build: ./services/order
+    container_name: order-service
+    depends_on:
+      - mysql
+      - rabbitmq
+    ports:
+      - "50053:50053"
+    networks:
+      - micro_net
+
+  # ---------------------------
+  # 🧠 GRAPHQL GATEWAY (BFF)
+  # ---------------------------
+  bff:
+    build: ./bff
+    container_name: bff
+    depends_on:
+      - user
+      - order
+    ports:
+      - "8080:8080"
+    networks:
+      - micro_net
+
+networks:
+  micro_net:
+    driver: bridge

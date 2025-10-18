@@ -34,3 +34,7 @@ docker/volumes/
 .idea/
 .DS_Store
 *.swp
+
+# Ignorar dados persistentes do MySQL
+/data/mysql
+data/mysql/
