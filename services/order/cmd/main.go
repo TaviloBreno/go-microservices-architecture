@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
@@ -12,8 +13,10 @@ import (
 
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/config"
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/messaging"
+	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/metrics"
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/repository"
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/service"
+	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/telemetry"
 	grpcServer "github.com/seu-usuario/go-microservices-architecture/services/order/internal/transport/grpc"
 	"github.com/seu-usuario/go-microservices-architecture/services/order/proto"
 )
@@ -23,6 +26,16 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("⚠️  Arquivo .env não encontrado, usando variáveis de ambiente do sistema")
 	}
+
+	// 📊 Inicializar métricas Prometheus
+	log.Println("📊 Inicializando métricas Prometheus...")
+	metrics.Init()
+
+	// 🔍 Inicializar OpenTelemetry Tracing
+	log.Println("🔍 Inicializando OpenTelemetry Tracing...")
+	ctx := context.Background()
+	shutdown := telemetry.InitTracer("order-service")
+	defer shutdown(ctx)
 
 	// 🧩 Conectar ao banco de dados
 	log.Println("🔗 Conectando ao banco de dados...")
