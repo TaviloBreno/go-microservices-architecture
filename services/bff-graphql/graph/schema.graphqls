@@ -1,0 +1,89 @@
+# GraphQL Schema para BFF
+# Define os tipos e queries para unificar os microsserviços
+
+# Tipo Order do order-service
+type Order {
+  id: ID!
+  user_id: Int!
+  product_name: String!
+  quantity: Int!
+  price: Float!
+  status: String!
+  created_at: String!
+}
+
+# Tipo User do user-service  
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  created_at: String!
+}
+
+# Tipo Payment do payment-service
+type Payment {
+  id: ID!
+  order_id: Int!
+  user_id: Int!
+  amount: Float!
+  status: String!
+  payment_method: String!
+  created_at: String!
+}
+
+# Tipo Notification do notification-service
+type Notification {
+  id: ID!
+  payment_id: Int!
+  order_id: Int!
+  message: String!
+  status: String!
+  created_at: String!
+}
+
+# Tipo consolidado para Dashboard
+type OrderSummary {
+  order: Order
+  user: User
+  payment: Payment
+  notifications: [Notification!]
+}
+
+# Queries principais
+type Query {
+  # Queries individuais por serviço
+  orders: [Order!]!
+  users: [User!]!
+  payments: [Payment!]!
+  notifications: [Notification!]!
+  
+  # Queries por ID
+  order(id: ID!): Order
+  user(id: ID!): User
+  payment(id: ID!): Payment
+  
+  # Query consolidada
+  orderSummary(orderId: ID!): OrderSummary
+  
+  # Health check
+  health: String!
+}
+
+# Mutations para criar recursos
+type Mutation {
+  createOrder(input: CreateOrderInput!): Order!
+  createUser(input: CreateUserInput!): User!
+}
+
+# Inputs para mutations
+input CreateOrderInput {
+  user_id: Int!
+  product_name: String!
+  quantity: Int!
+  price: Float!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+}
