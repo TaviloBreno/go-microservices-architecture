@@ -22,12 +22,12 @@ func Load() *Config {
 
 	cfg := &Config{
 		ServicePort: getEnv("SERVICE_PORT", "50053"),
-		DBHost:      getEnv("DB_HOST", "localhost"),
+		DBHost:      getEnv("DB_HOST", "mysql"),
 		DBPort:      getEnv("DB_PORT", "3306"),
 		DBUser:      getEnv("DB_USER", "root"),
 		DBPass:      getEnv("DB_PASSWORD", "secret"),
 		DBName:      getEnv("DB_NAME", "order_service"),
-		RabbitMQURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		RabbitMQURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
 	}
 
 	log.Printf("Config carregada: %+v", cfg)
