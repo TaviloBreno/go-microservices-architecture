@@ -6,8 +6,12 @@ require (
 	github.com/99designs/gqlgen v0.17.81
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
+	github.com/prometheus/client_golang v1.17.0
 	github.com/rs/cors v1.11.1
 	github.com/vektah/gqlparser/v2 v2.5.30
+	go.opentelemetry.io/otel v1.21.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
+	go.opentelemetry.io/otel/sdk v1.21.0
 	google.golang.org/grpc v1.60.1
 )
 

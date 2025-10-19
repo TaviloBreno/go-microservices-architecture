@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -19,10 +20,22 @@ import (
 	"github.com/seu-usuario/go-microservices-architecture/bff-graphql/graph"
 	"github.com/seu-usuario/go-microservices-architecture/bff-graphql/internal/clients"
 	"github.com/seu-usuario/go-microservices-architecture/bff-graphql/internal/config"
+	"github.com/seu-usuario/go-microservices-architecture/bff-graphql/internal/metrics"
+	"github.com/seu-usuario/go-microservices-architecture/bff-graphql/internal/telemetry"
 )
 
 func main() {
 	log.Println("🚀 Iniciando BFF GraphQL Server")
+
+	// 📊 Inicializar métricas Prometheus
+	log.Println("📊 Inicializando métricas Prometheus...")
+	metrics.Init()
+
+	// 🔍 Inicializar OpenTelemetry Tracing
+	log.Println("🔍 Inicializando OpenTelemetry Tracing...")
+	ctx := context.Background()
+	shutdown := telemetry.InitTracer("bff-service")
+	defer shutdown(ctx)
 
 	// Carregar configuração
 	cfg, err := config.Load()
