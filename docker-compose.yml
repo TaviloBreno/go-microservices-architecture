@@ -119,6 +119,30 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_QUEUE=orders
     ports:
+      - "50052:50052"
+    networks:
+      - micro_net
+
+  payment:
+    build: ./services/payment
+    container_name: payment-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_NAME=order_service
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_QUEUE=orders
+    ports:
       - "50053:50053"
     networks:
       - micro_net
