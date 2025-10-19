@@ -103,6 +103,10 @@ docker-ps: ## Lista containers rodando
 
 docker-restart: docker-down docker-up ## Reinicia todos os containers
 
+health-check: ## Verifica saúde de todos os serviços
+	@echo "${GREEN}Checking services health...${RESET}"
+	@bash scripts/health-check.sh
+
 ##@ Desenvolvimento
 
 dev-order: ## Roda Order Service em modo dev
