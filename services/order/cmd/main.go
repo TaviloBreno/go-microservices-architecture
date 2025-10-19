@@ -45,12 +45,12 @@ func main() {
 	// 🏗️ Inicializar dependências
 	log.Println("🏗️  Inicializando dependências...")
 	orderRepo := repository.NewOrderRepository(db)
-	
+
 	var orderPublisher *messaging.OrderPublisher
 	if rabbitmqConn != nil {
 		orderPublisher = messaging.NewOrderPublisher(rabbitmqConn)
 	}
-	
+
 	orderService := service.NewOrderService(orderRepo, orderPublisher)
 	orderGRPCServer := grpcServer.NewOrderGRPCServer(orderService)
 
@@ -80,13 +80,13 @@ func main() {
 
 	log.Println("🛑 Desligando OrderService...")
 	s.GracefulStop()
-	
+
 	// Fechar conexão RabbitMQ se existir
 	if rabbitmqConn != nil {
 		if err := rabbitmqConn.Close(); err != nil {
 			log.Printf("⚠️ Erro ao fechar RabbitMQ: %v", err)
 		}
 	}
-	
+
 	log.Println("✅ OrderService desligado com sucesso")
 }

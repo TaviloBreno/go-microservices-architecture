@@ -18,7 +18,7 @@ type OrderService interface {
 
 // orderService implementa OrderService
 type orderService struct {
-	orderRepo     repository.OrderRepository
+	orderRepo      repository.OrderRepository
 	orderPublisher *messaging.OrderPublisher
 }
 
