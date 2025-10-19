@@ -28,6 +28,9 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     ports:
       - "5672:5672" # Comunicação entre microsserviços
       - "15672:15672" # Painel de administração
@@ -110,7 +113,11 @@ services:
       - DB_USER=root
       - DB_PASSWORD=secret
       - DB_NAME=order_service
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_QUEUE=orders
     ports:
       - "50053:50053"
     networks:

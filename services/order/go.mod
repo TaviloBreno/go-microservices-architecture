@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/joho/godotenv v1.5.1
+	github.com/rabbitmq/amqp091-go v1.10.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.6
 	gorm.io/driver/mysql v1.6.0

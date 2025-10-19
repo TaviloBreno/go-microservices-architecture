@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/domain"
+	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/messaging"
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/repository"
 )
 
@@ -17,13 +18,15 @@ type OrderService interface {
 
 // orderService implementa OrderService
 type orderService struct {
-	orderRepo repository.OrderRepository
+	orderRepo     repository.OrderRepository
+	orderPublisher *messaging.OrderPublisher
 }
 
 // NewOrderService cria uma nova instância do serviço de pedidos
-func NewOrderService(orderRepo repository.OrderRepository) OrderService {
+func NewOrderService(orderRepo repository.OrderRepository, orderPublisher *messaging.OrderPublisher) OrderService {
 	return &orderService{
-		orderRepo: orderRepo,
+		orderRepo:      orderRepo,
+		orderPublisher: orderPublisher,
 	}
 }
 
@@ -60,7 +63,18 @@ func (s *orderService) CreateOrder(customer string, productID uint, quantity int
 		return nil, errors.New("falha ao salvar pedido")
 	}
 
-	log.Printf("✅ Pedido criado com sucesso: ID=%d, Cliente=%s", order.ID, order.Customer)
+	log.Printf("✅ Pedido criado com sucesso no banco: ID=%d, Cliente=%s", order.ID, order.Customer)
+
+	// Publicar evento no RabbitMQ
+	if s.orderPublisher != nil {
+		if err := s.orderPublisher.PublishOrderCreated(order); err != nil {
+			// Log do erro mas não falha a criação do pedido
+			log.Printf("⚠️ Erro ao publicar evento de pedido criado: %v", err)
+		}
+	} else {
+		log.Println("⚠️ Publisher não configurado - evento não será enviado")
+	}
+
 	return order, nil
 }
 
