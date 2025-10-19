@@ -34,6 +34,12 @@ services:
     ports:
       - "5672:5672" # Comunicação entre microsserviços
       - "15672:15672" # Painel de administração
+      - "15692:15692" # Prometheus metrics
+    command: |
+      bash -c "
+      rabbitmq-plugins enable rabbitmq_prometheus &&
+      rabbitmq-server
+      "
     networks:
       - micro_net
 
@@ -60,7 +66,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - micro_net
 
@@ -73,6 +79,13 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
     networks:
       - micro_net
 

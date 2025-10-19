@@ -1,0 +1,124 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Business Metrics Dashboard",
+    "tags": ["business", "orders", "payments", "notifications"],
+    "style": "dark",
+    "timezone": "browser",
+    "editable": true,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Orders Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "increase(orders_processed_total[5m])",
+            "refId": "A",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Payment Success Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(payments_processed_total{status=\"success\"}[5m]) / rate(payments_processed_total[5m]) * 100",
+            "refId": "A",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "yAxes": [
+          {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Payment Amount Distribution",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(payment_amount_bucket[5m])) by (le))",
+            "refId": "A",
+            "legendFormat": "50th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.90, sum(rate(payment_amount_bucket[5m])) by (le))",
+            "refId": "B",
+            "legendFormat": "90th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(payment_amount_bucket[5m])) by (le))",
+            "refId": "C",
+            "legendFormat": "99th percentile"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Notification Processing Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(notification_processing_seconds_bucket[5m])) by (le, type))",
+            "refId": "A",
+            "legendFormat": "{{type}} - 95th percentile"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "RabbitMQ Queue Length",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rabbitmq_queue_length",
+            "refId": "A",
+            "legendFormat": "{{queue}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 16
+        }
+      }
+    ]
+  }
+}

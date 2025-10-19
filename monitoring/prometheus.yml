@@ -1,0 +1,62 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  # "first_rules.yml"
+  # "second_rules.yml"
+
+scrape_configs:
+  # Order Service
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:9091']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  # Payment Service
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['payment-service:9091']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:9091']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  # User Service
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:9091']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  # Catalog Service
+  - job_name: 'catalog-service'
+    static_configs:
+      - targets: ['catalog-service:9091']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  # BFF Service
+  - job_name: 'bff'
+    static_configs:
+      - targets: ['bff:9091']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  # Prometheus próprio
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # RabbitMQ (se habilitado o plugin management)
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+    metrics_path: /metrics
+    scrape_interval: 15s
