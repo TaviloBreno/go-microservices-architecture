@@ -107,6 +107,10 @@ health-check: ## Verifica saúde de todos os serviços
 	@echo "${GREEN}Checking services health...${RESET}"
 	@bash scripts/health-check.sh
 
+check-env: ## Verifica se o ambiente está pronto
+	@echo "${GREEN}Checking environment...${RESET}"
+	@bash scripts/check-environment.sh
+
 ##@ Desenvolvimento
 
 dev-order: ## Roda Order Service em modo dev

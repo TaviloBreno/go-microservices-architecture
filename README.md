@@ -94,36 +94,70 @@ Frontend (React) → BFF (GraphQL) → Microservices (gRPC)
 - Docker 20.10+ e Docker Compose 2.0+
 - Go 1.21+ (para desenvolvimento local)
 - Node.js 18+ (para frontend)
+- 8GB RAM mínimo (16GB recomendado)
+- 10GB espaço em disco
 
-### Subir toda a infraestrutura
+📖 **[Guia Completo de Instalação](docs/INSTALLATION.md)** - Instruções detalhadas para Windows, macOS e Linux
+
+### Instalação em 3 passos
 
 ```bash
-# Clonar o repositório
-git clone <repository-url>
+# 1. Clonar o repositório
+git clone https://github.com/TaviloBreno/go-microservices-architecture.git
 cd go-microservices-architecture
 
-# Subir todos os serviços
+# 2. Subir todos os serviços
 docker-compose up -d
 
-# Ou usando Makefile (recomendado)
+# 3. Aguardar inicialização (30-60 segundos) e verificar
+docker-compose ps
+make health-check
+```
+
+### Usar via Makefile (Recomendado)
+
+```bash
+# Subir todos os serviços
 make docker-up
 
 # Verificar saúde dos serviços
 make health-check
+
+# Ver logs
+make docker-logs
 ```
 
 ### Acessar os serviços
 
 | Serviço | URL | Credenciais |
 |---------|-----|-------------|
-| 🎨 Frontend | http://localhost:3001 | - |
-| � GraphQL | http://localhost:8080/graphql | - |
-| 📊 Grafana | http://localhost:3000 | admin / admin123 |
-| 📈 Prometheus | http://localhost:9090 | - |
-| 🔍 Jaeger | http://localhost:16686 | - |
-| 🐰 RabbitMQ | http://localhost:15672 | guest / guest |
+| 🎨 **Frontend** | http://localhost:3001 | - |
+| 🔷 **GraphQL Playground** | http://localhost:8080/graphql | - |
+| 📊 **Grafana** | http://localhost:3000 | admin / admin123 |
+| 📈 **Prometheus** | http://localhost:9090 | - |
+| 🔍 **Jaeger** | http://localhost:16686 | - |
+| 🐰 **RabbitMQ** | http://localhost:15672 | guest / guest |
 
-📖 **[Guia de Início Rápido Completo](docs/QUICKSTART.md)**
+### Banco de Dados Populado
+
+O projeto já vem com **dados de exemplo** pré-carregados:
+
+- ✅ 10 usuários
+- ✅ 8 categorias de produtos
+- ✅ 28 produtos (eletrônicos, livros, roupas, etc)
+- ✅ 10 pedidos com itens
+- ✅ 10 pagamentos processados
+- ✅ 10 notificações enviadas
+
+**Acessar MySQL:**
+```bash
+docker exec -it <mysql-container> mysql -u root -p
+# Senha: root123
+# Use: catalog_service, order_service, etc
+```
+
+📖 **[Guia de Início Rápido Completo](docs/QUICKSTART.md)**  
+📦 **[Instalação Detalhada](docs/INSTALLATION.md)** - Passo a passo com troubleshooting
 
 ---
 
@@ -132,7 +166,8 @@ make health-check
 | Documento | Descrição |
 |-----------|-----------|
 | [🏛️ Arquitetura](docs/ARCHITECTURE.md) | Arquitetura completa do sistema |
-| [🚀 Início Rápido](docs/QUICKSTART.md) | Guia para começar em minutos |
+| [� Instalação](docs/INSTALLATION.md) | Guia de instalação e configuração detalhado |
+| [�🚀 Início Rápido](docs/QUICKSTART.md) | Guia para começar em minutos |
 | [📊 Passo 10: Monitoring](docs/PASSO-10-MONITORING.md) | Prometheus, Grafana e Jaeger |
 | [🔄 Passo 11: CI/CD](docs/PASSO-11-CICD.md) | GitHub Actions e testes |
 | [🚀 Passo 12: Deploy](docs/PASSO-12-DEPLOYMENT.md) | Deploy automatizado em produção |

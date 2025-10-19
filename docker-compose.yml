@@ -6,12 +6,15 @@ services:
     image: mysql:8.0
     container_name: mysql
     environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: order_service
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: microservices
+      MYSQL_USER: microservices
+      MYSQL_PASSWORD: micro123
     ports:
       - "3307:3306"
     volumes:
       - ./data/mysql:/var/lib/mysql
+      - ./infra/mysql/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
