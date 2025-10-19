@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { cn } from '../lib/utils';
+import ThemeToggle from './ThemeToggle';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const { user, logout } = useAuth();
@@ -154,6 +155,19 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             </div>
           </div>
         )}
+
+        {/* Theme Toggle */}
+        <div className={cn(
+          "mb-3",
+          isCollapsed ? "flex justify-center" : ""
+        )}>
+          <ThemeToggle 
+            showText={!isCollapsed}
+            className={cn(
+              isCollapsed ? "w-10 h-10" : "w-full"
+            )} 
+          />
+        </div>
 
         <Button
           variant="outline"

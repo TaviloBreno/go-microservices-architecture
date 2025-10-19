@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { cn } from './lib/utils';
+import LoginPage from './pages/LoginPage';
 
 // Páginas com shadcn/ui
 const Dashboard = () => (
@@ -79,6 +81,10 @@ const Dashboard = () => (
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground">Autenticação</span>
               <Badge variant="success">Ativo</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Dark Mode</span>
+              <Badge variant="success">Disponível</Badge>
             </div>
           </div>
           <div className="space-y-3">
@@ -161,25 +167,27 @@ const NotificationsPage = () => (
   </div>
 );
 
-// Layout principal com sidebar
+// Layout principal com sidebar e dark mode
 const MainLayout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar 
-        isCollapsed={sidebarCollapsed} 
-        setIsCollapsed={setSidebarCollapsed}
-      />
-      <main className={cn(
-        "flex-1 overflow-hidden transition-all duration-300",
-        "lg:ml-0"
-      )}>
-        <div className="lg:pl-4 pt-16 lg:pt-0">
-          {children}
-        </div>
-      </main>
-    </div>
+    <ThemeProvider>
+      <div className="min-h-screen bg-background flex">
+        <Sidebar 
+          isCollapsed={sidebarCollapsed} 
+          setIsCollapsed={setSidebarCollapsed}
+        />
+        <main className={cn(
+          "flex-1 overflow-hidden transition-all duration-300",
+          "lg:ml-0"
+        )}>
+          <div className="lg:pl-4 pt-16 lg:pt-0">
+            {children}
+          </div>
+        </main>
+      </div>
+    </ThemeProvider>
   );
 };
 
@@ -208,31 +216,41 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="App">
-          <ProtectedRoute>
-            <Routes>
-              <Route path="/" element={
+          <Routes>
+            {/* Login sem dark mode */}
+            <Route path="/login" element={<LoginPage />} />
+            
+            {/* Dashboard com dark mode através do ProtectedRoute */}
+            <Route path="/" element={
+              <ProtectedRoute>
                 <MainLayout>
                   <Dashboard />
                 </MainLayout>
-              } />
-              <Route path="/orders" element={
+              </ProtectedRoute>
+            } />
+            <Route path="/orders" element={
+              <ProtectedRoute>
                 <MainLayout>
                   <OrdersPage />
                 </MainLayout>
-              } />
-              <Route path="/payments" element={
+              </ProtectedRoute>
+            } />
+            <Route path="/payments" element={
+              <ProtectedRoute>
                 <MainLayout>
                   <PaymentsPage />
                 </MainLayout>
-              } />
-              <Route path="/notifications" element={
+              </ProtectedRoute>
+            } />
+            <Route path="/notifications" element={
+              <ProtectedRoute>
                 <MainLayout>
                   <NotificationsPage />
                 </MainLayout>
-              } />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </div>
       </Router>
     </AuthProvider>
