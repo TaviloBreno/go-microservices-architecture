@@ -7,6 +7,8 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/runtime/protoimpl"
 )
@@ -160,7 +162,7 @@ type UnimplementedNotificationServiceServer struct {
 }
 
 func (UnimplementedNotificationServiceServer) ListNotifications(context.Context, *ListNotificationsRequest) (*ListNotificationsResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "method ListNotifications not implemented")
 }
 
 // RegisterNotificationServiceServer registra o serviço no servidor gRPC
