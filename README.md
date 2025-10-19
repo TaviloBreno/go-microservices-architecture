@@ -1,16 +1,10 @@
 # 🧠 Go Microservices Architecture
 
-Arquitetura moderna e escalável utilizando:
-- **Go (Golang)** — gRPC, GraphQL, Clean Architecture
-- **RabbitMQ** — mensageria assíncrona
-- **MySQL** — persistência por microsserviço
-- **React** — frontend SPA
-- **Docker Compose / K8s** — infraestrutura completa
-- **OpenTelemetry + Prometheus + Jaeger** — observabilidade
-
----
-
-# 🧠 Go Microservices Architecture
+[![CI Status](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/ci.yml/badge.svg)](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/ci.yml)
+[![CD Status](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/cd.yml/badge.svg)](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/cd.yml)
+![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 Arquitetura moderna e escalável utilizando:
 - **Go (Golang)** — gRPC, GraphQL, Clean Architecture
@@ -19,6 +13,7 @@ Arquitetura moderna e escalável utilizando:
 - **React** — frontend SPA
 - **Docker Compose / K8s** — infraestrutura completa
 - **OpenTelemetry + Prometheus + Jaeger** — observabilidade
+- **GitHub Actions** — CI/CD automatizado
 
 ---
 
