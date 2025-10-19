@@ -1,0 +1,38 @@
+# gqlgen.yml - Configuração do 99designs/gqlgen
+
+# Schema GraphQL
+schema:
+  - graph/schema.graphqls
+
+# Onde gerar o código
+exec:
+  filename: graph/generated.go
+  package: graph
+
+# Onde gerar os resolvers
+resolver:
+  filename: graph/resolvers.go
+  package: graph
+  type: Resolver
+
+# Onde gerar os modelos
+model:
+  filename: graph/model/models_gen.go
+  package: model
+
+# Configurações de modelos automáticos
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+
+# Omitir resolver para campos que podem ser resolvidos automaticamente
+omit_slice_element_pointers: false

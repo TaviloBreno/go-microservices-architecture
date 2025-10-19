@@ -174,18 +174,35 @@ services:
   # ---------------------------
   # 🧠 GRAPHQL GATEWAY (BFF)
   # ---------------------------
-  bff:
-    build: ./bff
-    container_name: bff
+  bff-graphql:
+    build: ./services/bff-graphql
+    container_name: bff-graphql
     depends_on:
       user:
         condition: service_started
       order:
         condition: service_started
+      payment:
+        condition: service_started
+      notification:
+        condition: service_started
+    environment:
+      - PORT=8080
+      - GO_ENV=development
+      - ORDER_SERVICE_URL=order:50052
+      - USER_SERVICE_URL=user:50051
+      - PAYMENT_SERVICE_URL=payment:50053
+      - NOTIFICATION_SERVICE_URL=notification:50055
     ports:
       - "8080:8080"
     networks:
       - micro_net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   micro_net:
