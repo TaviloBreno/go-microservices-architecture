@@ -1,0 +1,329 @@
+name: Deploy to Kubernetes
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}
+
+jobs:
+  # ========================================
+  # BUILD AND PUSH TO GHCR
+  # ========================================
+  build-and-push:
+    name: Build and Push to GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [order, payment, user, notification, catalog, bff, frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service == 'frontend' && './frontend' || format('./services/{0}', matrix.service) }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/go-ms-${{ matrix.service }}:${{ steps.version.outputs.VERSION }}
+            ghcr.io/${{ github.repository_owner }}/go-ms-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ========================================
+  # DEPLOY TO KUBERNETES
+  # ========================================
+  deploy-k8s:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update image tags in manifests
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          
+          # Update image tags in all deployment files
+          find deployment/kubernetes -name "*.yaml" -type f -exec sed -i \
+            "s|tavilobreno/go-ms-|ghcr.io/${{ github.repository_owner }}/go-ms-|g" {} \;
+          
+          find deployment/kubernetes -name "*-service.yaml" -type f -exec sed -i \
+            "s|:latest|:${VERSION}|g" {} \;
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl apply -f deployment/kubernetes/00-namespace.yaml
+
+      - name: Create/Update secrets
+        run: |
+          # Encode secrets in base64
+          MYSQL_ROOT_PASS=$(echo -n "${{ secrets.MYSQL_ROOT_PASSWORD }}" | base64)
+          MYSQL_PASS=$(echo -n "${{ secrets.MYSQL_PASSWORD }}" | base64)
+          RABBITMQ_PASS=$(echo -n "${{ secrets.RABBITMQ_PASSWORD }}" | base64)
+          RABBITMQ_URL=$(echo -n "amqp://guest:${{ secrets.RABBITMQ_PASSWORD }}@rabbitmq:5672/" | base64)
+          GRAFANA_PASS=$(echo -n "${{ secrets.GRAFANA_PASSWORD }}" | base64)
+          SMTP_PASS=$(echo -n "${{ secrets.SMTP_PASSWORD }}" | base64)
+          
+          # Create secrets (delete if exists)
+          kubectl delete secret mysql-secret -n microservices --ignore-not-found=true
+          kubectl create secret generic mysql-secret -n microservices \
+            --from-literal=root-password=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+            --from-literal=user=microservices \
+            --from-literal=password=${{ secrets.MYSQL_PASSWORD }} \
+            --from-literal=database=microservices
+          
+          kubectl delete secret rabbitmq-secret -n microservices --ignore-not-found=true
+          kubectl create secret generic rabbitmq-secret -n microservices \
+            --from-literal=user=guest \
+            --from-literal=password=${{ secrets.RABBITMQ_PASSWORD }} \
+            --from-literal=url="amqp://guest:${{ secrets.RABBITMQ_PASSWORD }}@rabbitmq:5672/"
+          
+          kubectl delete secret grafana-secret -n microservices --ignore-not-found=true
+          kubectl create secret generic grafana-secret -n microservices \
+            --from-literal=admin-user=admin \
+            --from-literal=admin-password=${{ secrets.GRAFANA_PASSWORD }}
+          
+          kubectl delete secret smtp-secret -n microservices --ignore-not-found=true
+          kubectl create secret generic smtp-secret -n microservices \
+            --from-literal=host=smtp.gmail.com \
+            --from-literal=port=587 \
+            --from-literal=password=${{ secrets.SMTP_PASSWORD }}
+
+      - name: Apply ConfigMaps
+        run: |
+          kubectl apply -f deployment/kubernetes/02-configmaps.yaml
+
+      - name: Deploy Infrastructure (MySQL, RabbitMQ)
+        run: |
+          kubectl apply -f deployment/kubernetes/30-infrastructure.yaml
+          echo "⏳ Waiting for infrastructure to be ready..."
+          kubectl wait --for=condition=ready pod -l app=mysql -n microservices --timeout=300s || true
+          kubectl wait --for=condition=ready pod -l app=rabbitmq -n microservices --timeout=300s || true
+
+      - name: Deploy Microservices
+        run: |
+          kubectl apply -f deployment/kubernetes/10-order-service.yaml
+          kubectl apply -f deployment/kubernetes/11-payment-service.yaml
+          kubectl apply -f deployment/kubernetes/12-other-services.yaml
+          
+          echo "⏳ Waiting for microservices to be ready..."
+          sleep 30
+
+      - name: Deploy BFF and Frontend
+        run: |
+          kubectl apply -f deployment/kubernetes/20-bff-frontend.yaml
+          
+          echo "⏳ Waiting for BFF and Frontend..."
+          sleep 20
+
+      - name: Deploy Monitoring
+        run: |
+          kubectl apply -f deployment/kubernetes/40-monitoring.yaml
+
+      - name: Deploy Ingress and HPA
+        run: |
+          kubectl apply -f deployment/kubernetes/50-ingress.yaml
+
+      - name: Wait for rollout
+        run: |
+          echo "⏳ Waiting for deployments to complete..."
+          
+          kubectl rollout status deployment/order-service -n microservices --timeout=300s
+          kubectl rollout status deployment/payment-service -n microservices --timeout=300s
+          kubectl rollout status deployment/user-service -n microservices --timeout=300s
+          kubectl rollout status deployment/notification-service -n microservices --timeout=300s
+          kubectl rollout status deployment/catalog-service -n microservices --timeout=300s
+          kubectl rollout status deployment/bff-service -n microservices --timeout=300s
+          kubectl rollout status deployment/frontend -n microservices --timeout=300s
+          
+          echo "✅ All deployments completed successfully"
+
+      - name: Verify deployment
+        run: |
+          echo "📊 Deployment Status:"
+          kubectl get deployments -n microservices
+          echo ""
+          echo "🎯 Pods Status:"
+          kubectl get pods -n microservices
+          echo ""
+          echo "🌐 Services:"
+          kubectl get services -n microservices
+          echo ""
+          echo "🔗 Ingress:"
+          kubectl get ingress -n microservices
+
+  # ========================================
+  # HEALTH CHECKS
+  # ========================================
+  health-check:
+    name: Health Checks
+    runs-on: ubuntu-latest
+    needs: deploy-k8s
+    steps:
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Wait for pods to be ready
+        run: |
+          echo "⏳ Waiting for all pods to be ready..."
+          kubectl wait --for=condition=ready pod --all -n microservices --timeout=600s || true
+
+      - name: Check pod health
+        run: |
+          UNHEALTHY_PODS=$(kubectl get pods -n microservices --field-selector=status.phase!=Running -o name)
+          
+          if [ -n "$UNHEALTHY_PODS" ]; then
+            echo "❌ Unhealthy pods detected:"
+            echo "$UNHEALTHY_PODS"
+            
+            # Show logs for unhealthy pods
+            for POD in $UNHEALTHY_PODS; do
+              echo "📋 Logs for $POD:"
+              kubectl logs $POD -n microservices --tail=50 || true
+            done
+            
+            exit 1
+          fi
+          
+          echo "✅ All pods are healthy"
+
+      - name: Check service endpoints
+        run: |
+          echo "🔍 Checking service endpoints..."
+          kubectl get endpoints -n microservices
+
+  # ========================================
+  # ROLLBACK ON FAILURE
+  # ========================================
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-k8s, health-check]
+    if: failure()
+    steps:
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Rollback deployments
+        run: |
+          echo "⚠️ Deployment failed, initiating rollback..."
+          
+          kubectl rollout undo deployment/order-service -n microservices
+          kubectl rollout undo deployment/payment-service -n microservices
+          kubectl rollout undo deployment/user-service -n microservices
+          kubectl rollout undo deployment/notification-service -n microservices
+          kubectl rollout undo deployment/catalog-service -n microservices
+          kubectl rollout undo deployment/bff-service -n microservices
+          kubectl rollout undo deployment/frontend -n microservices
+          
+          echo "✅ Rollback completed"
+
+      - name: Verify rollback
+        run: |
+          kubectl get pods -n microservices
+          echo "⚠️ Deployment was rolled back to previous version"
+
+  # ========================================
+  # NOTIFICATION
+  # ========================================
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Kubernetes Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${GITHUB_REF#refs/tags/}" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace:** microservices" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Deployed Services" >> $GITHUB_STEP_SUMMARY
+          echo "- Order Service (3 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- Payment Service (3 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- User Service (2 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- Notification Service (2 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- Catalog Service (2 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- BFF GraphQL (3 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend (2 replicas)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Access URLs" >> $GITHUB_STEP_SUMMARY
+          echo "Configure /etc/hosts or DNS:" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: http://microservices.local" >> $GITHUB_STEP_SUMMARY
+          echo "- GraphQL: http://api.microservices.local" >> $GITHUB_STEP_SUMMARY
+          echo "- Grafana: http://grafana.microservices.local" >> $GITHUB_STEP_SUMMARY
+          echo "- Prometheus: http://prometheus.microservices.local" >> $GITHUB_STEP_SUMMARY
+          echo "- Jaeger: http://jaeger.microservices.local" >> $GITHUB_STEP_SUMMARY

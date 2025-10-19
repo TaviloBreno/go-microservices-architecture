@@ -1,0 +1,289 @@
+name: Deploy to Docker Swarm
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  SWARM_HOST: ${{ secrets.SWARM_HOST }}
+  SSH_USER: ${{ secrets.SSH_USER }}
+
+jobs:
+  # ========================================
+  # PRE-DEPLOYMENT CHECKS
+  # ========================================
+  pre-deploy-checks:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate stack.yml
+        run: |
+          docker-compose -f deployment/docker-swarm/stack.yml config > /dev/null
+          echo "✅ Stack configuration is valid"
+
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            echo "❌ DOCKERHUB_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SWARM_HOST }}" ]; then
+            echo "❌ SWARM_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ SSH_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          echo "✅ All required secrets are configured"
+
+  # ========================================
+  # BUILD AND PUSH IMAGES
+  # ========================================
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: pre-deploy-checks
+    strategy:
+      matrix:
+        service:
+          - order
+          - payment
+          - user
+          - notification
+          - catalog
+          - bff
+          - frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push ${{ matrix.service }} service
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service == 'frontend' && './frontend' || format('./services/{0}', matrix.service) }}
+          file: ${{ matrix.service == 'frontend' && './frontend/Dockerfile' || format('./services/{0}/Dockerfile', matrix.service) }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/go-ms-${{ matrix.service }}:${{ steps.version.outputs.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/go-ms-${{ matrix.service }}:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/go-ms-${{ matrix.service }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/go-ms-${{ matrix.service }}:buildcache,mode=max
+
+      - name: Image digest
+        run: echo "Pushed ${{ matrix.service }} image with version ${{ steps.version.outputs.VERSION }}"
+
+  # ========================================
+  # DEPLOY TO DOCKER SWARM
+  # ========================================
+  deploy-swarm:
+    name: Deploy to Docker Swarm
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: https://microservices.local
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create secrets on Swarm (if not exist)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SWARM_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Create secrets if they don't exist
+            echo "${{ secrets.MYSQL_ROOT_PASSWORD }}" | docker secret create mysql_root_password - 2>/dev/null || true
+            echo "${{ secrets.MYSQL_PASSWORD }}" | docker secret create mysql_password - 2>/dev/null || true
+            echo "${{ secrets.RABBITMQ_PASSWORD }}" | docker secret create rabbitmq_password - 2>/dev/null || true
+            echo "${{ secrets.GRAFANA_PASSWORD }}" | docker secret create grafana_password - 2>/dev/null || true
+            echo "${{ secrets.SMTP_PASSWORD }}" | docker secret create smtp_password - 2>/dev/null || true
+            echo "✅ Secrets created/verified"
+
+      - name: Deploy stack to Swarm
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SWARM_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /srv/go-microservices-architecture || mkdir -p /srv/go-microservices-architecture
+            
+            # Pull latest deployment configs
+            git pull origin main || git clone https://github.com/${{ github.repository }}.git .
+            
+            # Export environment variables
+            export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+            export VERSION=${{ steps.version.outputs.VERSION }}
+            
+            # Deploy stack
+            docker stack deploy -c deployment/docker-swarm/stack.yml --with-registry-auth go-ms
+            
+            echo "✅ Stack deployed successfully"
+
+      - name: Wait for services to stabilize
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SWARM_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "⏳ Waiting for services to stabilize..."
+            sleep 30
+            
+            # Check service status
+            docker stack services go-ms
+            
+            # Verify all services are running
+            FAILED_SERVICES=$(docker stack services go-ms --format '{{.Name}}: {{.Replicas}}' | grep '0/' || true)
+            if [ -n "$FAILED_SERVICES" ]; then
+              echo "❌ Some services failed to start:"
+              echo "$FAILED_SERVICES"
+              exit 1
+            fi
+            
+            echo "✅ All services are running"
+
+  # ========================================
+  # HEALTH CHECKS
+  # ========================================
+  health-check:
+    name: Post-Deployment Health Checks
+    runs-on: ubuntu-latest
+    needs: deploy-swarm
+    steps:
+      - name: Wait for services
+        run: sleep 60
+
+      - name: Check BFF GraphQL Health
+        run: |
+          curl -f http://${{ secrets.SWARM_HOST }}:8080/health || exit 1
+          echo "✅ BFF GraphQL is healthy"
+
+      - name: Check Frontend Health
+        run: |
+          curl -f http://${{ secrets.SWARM_HOST }}:3001 || exit 1
+          echo "✅ Frontend is healthy"
+
+      - name: Check Prometheus Health
+        run: |
+          curl -f http://${{ secrets.SWARM_HOST }}:9090/-/healthy || exit 1
+          echo "✅ Prometheus is healthy"
+
+      - name: Check Grafana Health
+        run: |
+          curl -f http://${{ secrets.SWARM_HOST }}:3000/api/health || exit 1
+          echo "✅ Grafana is healthy"
+
+  # ========================================
+  # ROLLBACK ON FAILURE
+  # ========================================
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-swarm, health-check]
+    if: failure()
+    steps:
+      - name: Rollback deployment
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SWARM_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "⚠️ Deployment failed, initiating rollback..."
+            
+            # Rollback each service to previous version
+            docker service rollback go-ms_order-service
+            docker service rollback go-ms_payment-service
+            docker service rollback go-ms_user-service
+            docker service rollback go-ms_notification-service
+            docker service rollback go-ms_catalog-service
+            docker service rollback go-ms_bff-graphql
+            docker service rollback go-ms_frontend
+            
+            echo "✅ Rollback completed"
+
+      - name: Notify rollback
+        run: |
+          echo "❌ Deployment failed and was rolled back"
+          echo "Check logs for more details"
+
+  # ========================================
+  # NOTIFICATION
+  # ========================================
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${GITHUB_REF#refs/tags/}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed to:** ${{ secrets.SWARM_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Order Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Payment Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ User Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Notification Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Catalog Service" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ BFF GraphQL" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Frontend" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Endpoints" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 Frontend: http://${{ secrets.SWARM_HOST }}:3001" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔷 GraphQL: http://${{ secrets.SWARM_HOST }}:8080/graphql" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Grafana: http://${{ secrets.SWARM_HOST }}:3000" >> $GITHUB_STEP_SUMMARY
+          echo "- 📈 Prometheus: http://${{ secrets.SWARM_HOST }}:9090" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 Jaeger: http://${{ secrets.SWARM_HOST }}:16686" >> $GITHUB_STEP_SUMMARY

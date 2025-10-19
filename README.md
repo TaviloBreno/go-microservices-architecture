@@ -2,8 +2,11 @@
 
 [![CI Status](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/ci.yml/badge.svg)](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/ci.yml)
 [![CD Status](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/cd.yml/badge.svg)](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/cd.yml)
+[![Deploy Swarm](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/deploy-swarm.yml/badge.svg)](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/deploy-swarm.yml)
+[![Deploy K8s](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/deploy-kubernetes.yml/badge.svg)](https://github.com/TaviloBreno/go-microservices-architecture/actions/workflows/deploy-kubernetes.yml)
 ![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?logo=kubernetes)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 > Arquitetura completa de microserviços em Go com gRPC, GraphQL, monitoramento distribuído e CI/CD automatizado.
@@ -31,6 +34,7 @@ Este projeto demonstra uma arquitetura moderna e escalável de microserviços ut
 ✅ **Observabilidade completa** com Prometheus, Grafana e Jaeger  
 ✅ **Testes automatizados** com 70%+ de cobertura  
 ✅ **CI/CD** com GitHub Actions  
+✅ **Deploy automatizado** com Docker Swarm e Kubernetes  
 ✅ **Dashboard React** com suporte a dark mode  
 ✅ **Containerização completa** com Docker Compose  
 
@@ -131,6 +135,9 @@ make health-check
 | [🚀 Início Rápido](docs/QUICKSTART.md) | Guia para começar em minutos |
 | [📊 Passo 10: Monitoring](docs/PASSO-10-MONITORING.md) | Prometheus, Grafana e Jaeger |
 | [🔄 Passo 11: CI/CD](docs/PASSO-11-CICD.md) | GitHub Actions e testes |
+| [🚀 Passo 12: Deploy](docs/PASSO-12-DEPLOYMENT.md) | Deploy automatizado em produção |
+| [📦 Passo 12: Resumo](docs/PASSO-12-SUMMARY.md) | Resumo completo do deployment |
+| [🔧 Passo 12: Comandos](docs/PASSO-12-COMMANDS.md) | Comandos úteis para produção |
 
 ---
 
@@ -176,20 +183,106 @@ make coverage
 
 ---
 
+## 🚀 Deploy em Produção
+
+### Opções de Deploy
+
+Este projeto suporta **duas opções de orquestração** para produção:
+
+1. **Docker Swarm** - Deploy simples e rápido
+2. **Kubernetes** - Deploy enterprise com auto-scaling
+
+### Deploy Automático (Recomendado)
+
+```bash
+# Criar tag de release (dispara deploy automaticamente)
+git tag v1.0.0
+git push origin v1.0.0
+
+# GitHub Actions executa:
+# ✅ Build de todas as images
+# ✅ Push para Docker Hub/GHCR
+# ✅ Deploy no ambiente configurado
+# ✅ Health checks
+# ✅ Rollback automático se falhar
+```
+
+### Deploy Manual
+
+#### Docker Swarm
+
+```bash
+# Inicializar Swarm
+docker swarm init
+
+# Deploy com script automatizado
+cd deployment/scripts
+./deploy-swarm.sh
+
+# Ou manualmente
+docker stack deploy -c deployment/docker-swarm/stack.yml --with-registry-auth go-ms
+```
+
+#### Kubernetes
+
+```bash
+# Deploy com script automatizado
+cd deployment/scripts
+./deploy-k8s.sh
+
+# Ou manualmente
+kubectl apply -f deployment/kubernetes/
+```
+
+### Recursos de Produção
+
+✅ **Zero-downtime deployments** com rolling updates  
+✅ **Rollback automático** em caso de falhas  
+✅ **High Availability** com múltiplas réplicas  
+✅ **Auto-scaling** (HPA no Kubernetes)  
+✅ **Health checks** automatizados  
+✅ **Secrets management** seguro  
+✅ **Monitoramento integrado**  
+
+📖 **[Documentação Completa de Deployment](docs/PASSO-12-DEPLOYMENT.md)**  
+📦 **[Resumo e Arquivos Criados](docs/PASSO-12-SUMMARY.md)**  
+🔧 **[Comandos Úteis de Produção](docs/PASSO-12-COMMANDS.md)**
+
+---
+
 ## 🛠️ Comandos Úteis (Makefile)
 
 ```bash
+# Gerais
 make help             # Mostra todos os comandos disponíveis
 make docker-up        # Sobe todos os containers
 make docker-down      # Para todos os containers
 make health-check     # Verifica saúde dos serviços
+
+# Testes
 make test             # Roda todos os testes
 make lint             # Executa linter
 make coverage         # Gera relatório de cobertura
+
+# Monitoramento
 make prometheus       # Abre Prometheus no browser
 make grafana          # Abre Grafana no browser
 make jaeger           # Abre Jaeger no browser
+
+# Deployment em Produção
+make deploy-swarm     # Deploy para Docker Swarm
+make deploy-k8s       # Deploy para Kubernetes
+make rollback-swarm   # Rollback no Docker Swarm
+make rollback-k8s     # Rollback no Kubernetes
+make health-check-swarm   # Health check Swarm
+make health-check-k8s     # Health check K8s
+
+# Release
+make release VERSION=v1.0.0   # Cria e publica tag (dispara deploy)
+
+# Cleanup
 make clean            # Limpa arquivos temporários
+make clean-docker     # Remove containers e volumes
 ```
 
 ---
@@ -201,7 +294,9 @@ go-microservices-architecture/
 ├── .github/
 │   └── workflows/          # CI/CD pipelines
 │       ├── ci.yml          # Continuous Integration
-│       └── cd.yml          # Continuous Deployment
+│       ├── cd.yml          # Continuous Deployment
+│       ├── deploy-swarm.yml    # Docker Swarm deployment
+│       └── deploy-kubernetes.yml   # Kubernetes deployment
 ├── bff/                    # Backend for Frontend (GraphQL)
 │   ├── cmd/
 │   │   └── main.go
@@ -227,6 +322,28 @@ go-microservices-architecture/
 │   ├── src/
 │   ├── package.json
 │   └── vite.config.js
+├── deployment/             # Deployment configs
+│   ├── docker-swarm/
+│   │   ├── stack.yml       # Swarm stack configuration
+│   │   └── configs/
+│   ├── kubernetes/         # Kubernetes manifests
+│   │   ├── 00-namespace.yaml
+│   │   ├── 01-secrets.yaml
+│   │   ├── 02-configmaps.yaml
+│   │   ├── 10-order-service.yaml
+│   │   ├── 11-payment-service.yaml
+│   │   ├── 12-other-services.yaml
+│   │   ├── 20-bff-frontend.yaml
+│   │   ├── 30-infrastructure.yaml
+│   │   ├── 40-monitoring.yaml
+│   │   └── 50-ingress.yaml
+│   └── scripts/            # Deployment scripts
+│       ├── deploy-swarm.sh
+│       ├── deploy-k8s.sh
+│       ├── rollback-swarm.sh
+│       ├── rollback-k8s.sh
+│       ├── health-check-swarm.sh
+│       └── health-check-k8s.sh
 ├── infra/                  # Infraestrutura
 │   ├── mysql/
 │   │   └── init/
@@ -236,7 +353,10 @@ go-microservices-architecture/
 │   ├── ARCHITECTURE.md
 │   ├── QUICKSTART.md
 │   ├── PASSO-10-MONITORING.md
-│   └── PASSO-11-CICD.md
+│   ├── PASSO-11-CICD.md
+│   ├── PASSO-12-DEPLOYMENT.md
+│   ├── PASSO-12-SUMMARY.md
+│   └── PASSO-12-COMMANDS.md
 ├── scripts/                # Scripts utilitários
 │   ├── run-all-tests.sh
 │   └── health-check.sh
@@ -284,10 +404,15 @@ Este projeto demonstra:
 - ✅ Observabilidade distribuída
 - ✅ Testes automatizados
 - ✅ CI/CD com GitHub Actions
+- ✅ Deploy automatizado (Swarm + Kubernetes)
+- ✅ Orquestração de containers
+- ✅ High Availability e Auto-scaling
+- ✅ Rollback automático
 - ✅ Containerização com Docker
 - ✅ Clean Architecture em Go
 - ✅ Message Queue com RabbitMQ
 - ✅ Monitoramento em tempo real
+- ✅ Secrets management seguro
 
 ---
 
@@ -316,6 +441,9 @@ Este projeto demonstra:
 [![Made with Go](https://img.shields.io/badge/Made%20with-Go-00ADD8?logo=go)](https://golang.org/)
 [![Powered by gRPC](https://img.shields.io/badge/Powered%20by-gRPC-244c5a?logo=grpc)](https://grpc.io/)
 [![Built with Docker](https://img.shields.io/badge/Built%20with-Docker-2496ED?logo=docker)](https://www.docker.com/)
+[![Deploy with Kubernetes](https://img.shields.io/badge/Deploy%20with-Kubernetes-326CE5?logo=kubernetes)](https://kubernetes.io/)
+[![Monitored by Prometheus](https://img.shields.io/badge/Monitored%20by-Prometheus-E6522C?logo=prometheus)](https://prometheus.io/)
+[![Traced by Jaeger](https://img.shields.io/badge/Traced%20by-Jaeger-60D0E4)](https://www.jaegertracing.io/)
 
 └── services/
     ├── user/

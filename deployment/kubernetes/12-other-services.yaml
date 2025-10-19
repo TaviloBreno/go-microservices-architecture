@@ -1,0 +1,139 @@
+# User, Notification, Catalog Services
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: microservices
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: tavilobreno/go-ms-user:latest
+          ports:
+            - containerPort: 50053
+          envFrom:
+            - secretRef:
+                name: mysql-secret
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: microservices
+spec:
+  selector:
+    app: user-service
+  ports:
+    - port: 50053
+      targetPort: 50053
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: microservices
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: tavilobreno/go-ms-notification:latest
+          ports:
+            - containerPort: 50054
+          envFrom:
+            - secretRef:
+                name: rabbitmq-secret
+            - secretRef:
+                name: smtp-secret
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: microservices
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 50054
+      targetPort: 50054
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: microservices
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: tavilobreno/go-ms-catalog:latest
+          ports:
+            - containerPort: 50055
+          envFrom:
+            - secretRef:
+                name: mysql-secret
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: microservices
+spec:
+  selector:
+    app: catalog-service
+  ports:
+    - port: 50055
+      targetPort: 50055

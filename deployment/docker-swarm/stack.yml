@@ -1,0 +1,601 @@
+version: "3.8"
+
+# ========================================
+# Go Microservices Architecture
+# Docker Swarm Stack Configuration
+# Production Ready
+# ========================================
+
+services:
+  # ========================================
+  # MICROSERVICES
+  # ========================================
+  
+  order-service:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-order:${VERSION:-latest}
+    networks:
+      - microservices_network
+      - monitoring_network
+    ports:
+      - "50051:50051"
+    environment:
+      - SERVICE_NAME=order-service
+      - GRPC_PORT=50051
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=microservices
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_root_password
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD_FILE=/run/secrets/rabbitmq_password
+      - PROMETHEUS_PORT=50051
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    secrets:
+      - mysql_root_password
+      - rabbitmq_password
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        monitor: 60s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        failure_action: pause
+        monitor: 60s
+        order: stop-first
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == worker
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.order.rule=Host(`order.microservices.local`)"
+        - "traefik.http.services.order.loadbalancer.server.port=50051"
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50051"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  payment-service:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-payment:${VERSION:-latest}
+    networks:
+      - microservices_network
+      - monitoring_network
+    ports:
+      - "50052:50052"
+    environment:
+      - SERVICE_NAME=payment-service
+      - GRPC_PORT=50052
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=microservices
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_root_password
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD_FILE=/run/secrets/rabbitmq_password
+      - PROMETHEUS_PORT=50052
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    secrets:
+      - mysql_root_password
+      - rabbitmq_password
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == worker
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50052"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  user-service:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-user:${VERSION:-latest}
+    networks:
+      - microservices_network
+      - monitoring_network
+    ports:
+      - "50053:50053"
+    environment:
+      - SERVICE_NAME=user-service
+      - GRPC_PORT=50053
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=microservices
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_root_password
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD_FILE=/run/secrets/rabbitmq_password
+      - PROMETHEUS_PORT=50053
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    secrets:
+      - mysql_root_password
+      - rabbitmq_password
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50053"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification-service:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-notification:${VERSION:-latest}
+    networks:
+      - microservices_network
+      - monitoring_network
+    ports:
+      - "50054:50054"
+    environment:
+      - SERVICE_NAME=notification-service
+      - GRPC_PORT=50054
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD_FILE=/run/secrets/rabbitmq_password
+      - PROMETHEUS_PORT=50054
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+    secrets:
+      - rabbitmq_password
+      - smtp_password
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50054"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  catalog-service:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-catalog:${VERSION:-latest}
+    networks:
+      - microservices_network
+      - monitoring_network
+    ports:
+      - "50055:50055"
+    environment:
+      - SERVICE_NAME=catalog-service
+      - GRPC_PORT=50055
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=microservices
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_root_password
+      - PROMETHEUS_PORT=50055
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    secrets:
+      - mysql_root_password
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50055"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  bff-graphql:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-bff:${VERSION:-latest}
+    networks:
+      - microservices_network
+      - monitoring_network
+      - frontend_network
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVICE_NAME=bff-graphql
+      - HTTP_PORT=8080
+      - ORDER_SERVICE_URL=order-service:50051
+      - PAYMENT_SERVICE_URL=payment-service:50052
+      - USER_SERVICE_URL=user-service:50053
+      - NOTIFICATION_SERVICE_URL=notification-service:50054
+      - CATALOG_SERVICE_URL=catalog-service:50055
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - PROMETHEUS_PORT=8080
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.bff.rule=Host(`api.microservices.local`)"
+        - "traefik.http.services.bff.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========================================
+  # FRONTEND
+  # ========================================
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME:-tavilobreno}/go-ms-frontend:${VERSION:-latest}
+    networks:
+      - frontend_network
+    ports:
+      - "3001:3001"
+    environment:
+      - VITE_GRAPHQL_ENDPOINT=http://bff-graphql:8080/graphql
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`microservices.local`)"
+        - "traefik.http.services.frontend.loadbalancer.server.port=3001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # INFRASTRUCTURE
+  # ========================================
+
+  mysql:
+    image: mysql:8.0
+    networks:
+      - microservices_network
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql_root_password
+      - MYSQL_DATABASE=microservices
+      - MYSQL_USER=microservices
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_password
+    secrets:
+      - mysql_root_password
+      - mysql_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.50'
+          memory: 512M
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    networks:
+      - microservices_network
+      - monitoring_network
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS_FILE=/run/secrets/rabbitmq_password
+      - RABBITMQ_MANAGEMENT_ALLOW_WEB_DISPATCH=true
+    secrets:
+      - rabbitmq_password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========================================
+  # MONITORING & OBSERVABILITY
+  # ========================================
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    networks:
+      - monitoring_network
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+    volumes:
+      - prometheus_data:/prometheus
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    networks:
+      - monitoring_network
+      - frontend_network
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_password
+      - GF_INSTALL_PLUGINS=
+      - GF_SERVER_ROOT_URL=http://grafana.microservices.local
+    secrets:
+      - grafana_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+    configs:
+      - source: grafana_datasources
+        target: /etc/grafana/provisioning/datasources/datasources.yml
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=Host(`grafana.microservices.local`)"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    networks:
+      - monitoring_network
+      - microservices_network
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:16686"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ========================================
+# NETWORKS
+# ========================================
+
+networks:
+  microservices_network:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.1.0/24
+
+  monitoring_network:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.2.0/24
+
+  frontend_network:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.3.0/24
+
+# ========================================
+# VOLUMES
+# ========================================
+
+volumes:
+  mysql_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ========================================
+# SECRETS
+# ========================================
+
+secrets:
+  mysql_root_password:
+    external: true
+  mysql_password:
+    external: true
+  rabbitmq_password:
+    external: true
+  grafana_password:
+    external: true
+  smtp_password:
+    external: true
+
+# ========================================
+# CONFIGS
+# ========================================
+
+configs:
+  prometheus_config:
+    file: ../../infra/prometheus/prometheus.yml
+  grafana_datasources:
+    file: ./configs/grafana-datasources.yml

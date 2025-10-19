@@ -197,6 +197,32 @@ release: ## Cria uma nova release (usage: make release VERSION=v1.0.0)
 	@git push origin $(VERSION)
 	@echo "${CYAN}Release $(VERSION) created and pushed!${RESET}"
 
+##@ Production Deployment
+
+deploy-swarm: ## Deploy para Docker Swarm
+	@echo "${GREEN}Deploying to Docker Swarm...${RESET}"
+	@bash deployment/scripts/deploy-swarm.sh
+
+deploy-k8s: ## Deploy para Kubernetes
+	@echo "${GREEN}Deploying to Kubernetes...${RESET}"
+	@bash deployment/scripts/deploy-k8s.sh
+
+rollback-swarm: ## Rollback no Docker Swarm
+	@echo "${YELLOW}Rolling back Docker Swarm deployment...${RESET}"
+	@bash deployment/scripts/rollback-swarm.sh
+
+rollback-k8s: ## Rollback no Kubernetes
+	@echo "${YELLOW}Rolling back Kubernetes deployment...${RESET}"
+	@bash deployment/scripts/rollback-k8s.sh
+
+health-check-swarm: ## Health check do Docker Swarm
+	@echo "${GREEN}Checking Docker Swarm health...${RESET}"
+	@bash deployment/scripts/health-check-swarm.sh
+
+health-check-k8s: ## Health check do Kubernetes
+	@echo "${GREEN}Checking Kubernetes health...${RESET}"
+	@bash deployment/scripts/health-check-k8s.sh
+
 ##@ Default
 
 .DEFAULT_GOAL := help

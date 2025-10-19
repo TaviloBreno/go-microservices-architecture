@@ -1,0 +1,92 @@
+# ========================================
+# ConfigMap for Prometheus
+# ========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: microservices
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'microservices-prod'
+        environment: 'production'
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'order-service'
+        static_configs:
+          - targets: ['order-service:50051']
+        metrics_path: '/metrics'
+
+      - job_name: 'payment-service'
+        static_configs:
+          - targets: ['payment-service:50052']
+        metrics_path: '/metrics'
+
+      - job_name: 'user-service'
+        static_configs:
+          - targets: ['user-service:50053']
+        metrics_path: '/metrics'
+
+      - job_name: 'notification-service'
+        static_configs:
+          - targets: ['notification-service:50054']
+        metrics_path: '/metrics'
+
+      - job_name: 'catalog-service'
+        static_configs:
+          - targets: ['catalog-service:50055']
+        metrics_path: '/metrics'
+
+      - job_name: 'bff-graphql'
+        static_configs:
+          - targets: ['bff-service:8080']
+        metrics_path: '/metrics'
+
+      - job_name: 'rabbitmq'
+        static_configs:
+          - targets: ['rabbitmq:15692']
+
+---
+# ========================================
+# ConfigMap for Grafana Datasources
+# ========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: microservices
+data:
+  datasources.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+        editable: true
+        jsonData:
+          timeInterval: "15s"
+
+---
+# ========================================
+# ConfigMap for Application Settings
+# ========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: microservices
+data:
+  JAEGER_ENDPOINT: "http://jaeger:14268/api/traces"
+  PROMETHEUS_ENABLED: "true"
+  LOG_LEVEL: "info"
+  ENVIRONMENT: "production"
