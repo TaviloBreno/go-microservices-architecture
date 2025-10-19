@@ -191,9 +191,11 @@ services:
   # 🧠 GRAPHQL GATEWAY (BFF)
   # ---------------------------
   bff-graphql:
-    build: ./services/bff-graphql
+    build: ./bff
     container_name: bff-graphql
     depends_on:
+      mysql:
+        condition: service_healthy
       user:
         condition: service_started
       order:
@@ -205,6 +207,9 @@ services:
     environment:
       - PORT=8080
       - GO_ENV=development
+      - DB_HOST=mysql
+      - DB_USER=microservices
+      - DB_PASS=micro123
       - ORDER_SERVICE_URL=order:50052
       - USER_SERVICE_URL=user:50051
       - PAYMENT_SERVICE_URL=payment:50053

@@ -10,7 +10,9 @@ import {
   LogOut,
   User,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShoppingCart,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -28,6 +30,18 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       href: '/',
       icon: LayoutDashboard,
       description: 'Visão geral do sistema'
+    },
+    {
+      title: 'Produtos',
+      href: '/products',
+      icon: ShoppingCart,
+      description: 'Catálogo de produtos'
+    },
+    {
+      title: 'Usuários',
+      href: '/users',
+      icon: Users,
+      description: 'Gerenciar usuários'
     },
     {
       title: 'Pedidos',

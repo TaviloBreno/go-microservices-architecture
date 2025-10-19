@@ -163,11 +163,27 @@ docker exec -it <mysql-container> mysql -u root -p
 
 ## 📚 Documentação
 
+### 📖 Guias Principais
+
 | Documento | Descrição |
 |-----------|-----------|
 | [🏛️ Arquitetura](docs/ARCHITECTURE.md) | Arquitetura completa do sistema |
-| [� Instalação](docs/INSTALLATION.md) | Guia de instalação e configuração detalhado |
-| [�🚀 Início Rápido](docs/QUICKSTART.md) | Guia para começar em minutos |
+| [🔧 Instalação](docs/INSTALLATION.md) | Guia de instalação e configuração detalhado |
+| [ Início Rápido](docs/QUICKSTART.md) | Guia para começar em minutos |
+
+### 🎨 Frontend & Integração (NOVO!)
+
+| Documento | Descrição |
+|-----------|-----------|
+| [🎨 Frontend Integration](docs/FRONTEND_README.md) | **Resumo rápido - 28 produtos, 10 usuários, 10 pedidos!** |
+| [📖 Frontend - Documentação](docs/FRONTEND_INTEGRATION.md) | Documentação técnica completa da integração |
+| [🖼️ Frontend - Guia Visual](docs/FRONTEND_VISUAL_GUIDE.md) | Guia visual com exemplos e diagramas |
+| [🧪 Frontend - Testes](docs/TESTING_GUIDE.md) | Checklist completo de testes |
+
+### 📊 Monitoramento & Deploy
+
+| Documento | Descrição |
+|-----------|-----------|
 | [📊 Passo 10: Monitoring](docs/PASSO-10-MONITORING.md) | Prometheus, Grafana e Jaeger |
 | [🔄 Passo 11: CI/CD](docs/PASSO-11-CICD.md) | GitHub Actions e testes |
 | [🚀 Passo 12: Deploy](docs/PASSO-12-DEPLOYMENT.md) | Deploy automatizado em produção |

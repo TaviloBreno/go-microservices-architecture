@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './com
 import { Badge } from './components/ui/badge';
 import { cn } from './lib/utils';
 import LoginPage from './pages/LoginPage';
+import ProductsPage from './pages/ProductsPage';
+import UsersPage from './pages/UsersPage';
 
 // Páginas com shadcn/ui
 const Dashboard = () => (
@@ -225,6 +227,20 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Dashboard />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/products" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <ProductsPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/users" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <UsersPage />
                 </MainLayout>
               </ProtectedRoute>
             } />

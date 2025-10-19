@@ -3,6 +3,7 @@ module github.com/seu-usuario/go-microservices-architecture/bff
 go 1.25.0
 
 require (
+	github.com/go-sql-driver/mysql v1.7.1
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.31.0
 )

@@ -1,6 +1,4 @@
-import React from 'react';
-import { useQuery } from '@apollo/client';
-import { GET_ORDERS } from '../apollo/queries';
+import React, { useState, useEffect } from 'react';
 
 const LoadingSpinner = () => (
   <div className="flex justify-center items-center p-8">
@@ -17,7 +15,7 @@ const ErrorMessage = ({ error, onRetry }) => (
       </svg>
       Erro ao carregar pedidos
     </div>
-    <p className="text-gray-600 text-sm mb-4">{error.message}</p>
+    <p className="text-gray-600 text-sm mb-4">{error}</p>
     <button 
       onClick={onRetry}
       className="btn-primary text-sm"
@@ -34,15 +32,22 @@ const StatusBadge = ({ status }) => {
       case 'completed':
       case 'aprovado':
       case 'paid':
+      case 'delivered':
+      case 'entregue':
         return 'status-completed';
       case 'pending':
       case 'processando':
       case 'processing':
+      case 'confirmed':
+      case 'confirmado':
         return 'status-processing';
       case 'failed':
       case 'cancelled':
       case 'cancelado':
         return 'status-failed';
+      case 'shipped':
+      case 'enviado':
+        return 'status-pending';
       default:
         return 'status-pending';
     }
@@ -57,6 +62,12 @@ const StatusBadge = ({ status }) => {
         return 'Pendente';
       case 'processing':
         return 'Processando';
+      case 'confirmed':
+        return 'Confirmado';
+      case 'shipped':
+        return 'Enviado';
+      case 'delivered':
+        return 'Entregue';
       case 'failed':
         return 'Falhou';
       case 'cancelled':
@@ -74,15 +85,40 @@ const StatusBadge = ({ status }) => {
 };
 
 const OrdersTable = () => {
-  const { data, loading, error, refetch } = useQuery(GET_ORDERS, {
-    pollInterval: 5000, // Atualiza a cada 5 segundos
-    errorPolicy: 'all',
-  });
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} onRetry={refetch} />;
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8080/api/orders');
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar pedidos');
+      }
 
-  const orders = data?.orders || [];
+      const data = await response.json();
+      setOrders(data || []);
+      setLoading(false);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    
+    // Atualiza a cada 5 segundos
+    const interval = setInterval(fetchOrders, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading && orders.length === 0) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} onRetry={fetchOrders} />;
 
   if (orders.length === 0) {
     return (
@@ -108,16 +144,10 @@ const OrdersTable = () => {
                 ID
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Produto
+                Usuário
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Usuário ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Quantidade
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Preço
+                Total
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -134,22 +164,17 @@ const OrdersTable = () => {
                   #{order.id}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{order.productName}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  #{order.userID}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {order.quantity}
+                  <div className="text-sm font-medium text-gray-900">{order.user_name}</div>
+                  <div className="text-xs text-gray-500">{order.user_email}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                  R$ {typeof order.price === 'number' ? order.price.toFixed(2) : order.price}
+                  R$ {typeof order.total === 'number' ? order.total.toFixed(2) : order.total}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <StatusBadge status={order.status} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
+                  {new Date(order.created_at).toLocaleDateString('pt-BR')}
                 </td>
               </tr>
             ))}
