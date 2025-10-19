@@ -11,6 +11,7 @@ import (
 
 	"payment-service/internal/database"
 	"payment-service/internal/messaging"
+	"payment-service/internal/publisher"
 	"payment-service/internal/repository"
 	"payment-service/internal/service"
 	"payment-service/internal/transport"
@@ -34,7 +35,15 @@ func main() {
 
 	// Inicializar dependências
 	paymentRepo := repository.NewPaymentRepository(db)
-	paymentService := service.NewPaymentService(paymentRepo)
+
+	// Inicializar publisher RabbitMQ
+	pub, err := publisher.NewPaymentPublisher()
+	if err != nil {
+		log.Fatalf("Falha ao inicializar publisher: %v", err)
+	}
+	defer pub.Close()
+
+	paymentService := service.NewPaymentService(paymentRepo, pub)
 
 	// Inicializar servidor gRPC
 	grpcServer := grpc.NewServer()

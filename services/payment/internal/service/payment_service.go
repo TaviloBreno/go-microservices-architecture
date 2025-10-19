@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"payment-service/internal/domain"
+	"payment-service/internal/publisher"
 	"payment-service/internal/repository"
 )
 
@@ -19,12 +20,14 @@ type PaymentService interface {
 // paymentService implementa PaymentService
 type paymentService struct {
 	paymentRepo repository.PaymentRepository
+	publisher   *publisher.PaymentPublisher
 }
 
 // NewPaymentService cria uma nova instância do serviço de pagamentos
-func NewPaymentService(paymentRepo repository.PaymentRepository) PaymentService {
+func NewPaymentService(paymentRepo repository.PaymentRepository, pub *publisher.PaymentPublisher) PaymentService {
 	return &paymentService{
 		paymentRepo: paymentRepo,
+		publisher:   pub,
 	}
 }
 
@@ -67,6 +70,15 @@ func (s *paymentService) ProcessPayment(orderID uint, amount float64) (*domain.P
 	if err := s.paymentRepo.Create(payment); err != nil {
 		log.Printf("Erro ao salvar pagamento: %v", err)
 		return nil, errors.New("falha ao salvar pagamento")
+	}
+
+	// Publicar evento de pagamento processado
+	if s.publisher != nil {
+		err := s.publisher.PublishPaymentEvent(payment)
+		if err != nil {
+			log.Printf("⚠️ Erro ao publicar evento de pagamento: %v", err)
+			// Não falhar o processamento do pagamento por causa do evento
+		}
 	}
 
 	log.Printf("💰 Pagamento processado para OrderID: %d - Status: %s - Amount: %.2f",
