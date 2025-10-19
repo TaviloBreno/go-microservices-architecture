@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package order;
+option go_package = "github.com/seu-usuario/go-microservices-architecture/services/order/proto";
+
+message OrderRequest {
+  string customer = 1;
+  uint32 product_id = 2;
+  int32 quantity = 3;
+  double price = 4;
+}
+
+message OrderResponse {
+  uint32 id = 1;
+  string customer = 2;
+  uint32 product_id = 3;
+  int32 quantity = 4;
+  double price = 5;
+  string created_at = 6;
+}
+
+message ListOrdersRequest {}
+message ListOrdersResponse {
+  repeated OrderResponse orders = 1;
+}
+
+service OrderService {
+  rpc CreateOrder (OrderRequest) returns (OrderResponse);
+  rpc ListOrders (ListOrdersRequest) returns (ListOrdersResponse);
+}

@@ -40,3 +40,8 @@ func getEnv(key, fallback string) string {
 	}
 	return fallback
 }
+
+// GetEnv retorna uma variável de ambiente ou um valor padrão (exportada)
+func GetEnv(key, fallback string) string {
+	return getEnv(key, fallback)
+}

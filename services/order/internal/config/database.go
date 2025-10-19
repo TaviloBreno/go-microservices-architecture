@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/domain"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -37,5 +38,19 @@ func ConnectDatabase() *gorm.DB {
 	}
 
 	log.Fatalf("❌ Erro ao conectar ao banco após %d tentativas: %v", maxRetries, err)
+	return nil
+}
+
+// AutoMigrate executa a migração automática do banco de dados
+func AutoMigrate(db *gorm.DB) error {
+	log.Println("🔄 Executando migração do banco de dados...")
+
+	err := db.AutoMigrate(&domain.Order{})
+	if err != nil {
+		log.Printf("❌ Erro ao executar migração: %v", err)
+		return err
+	}
+
+	log.Println("✅ Migração concluída com sucesso")
 	return nil
 }

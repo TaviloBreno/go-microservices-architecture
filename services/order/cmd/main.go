@@ -1,38 +1,68 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 
 	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/config"
-	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/entity"
+	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/repository"
+	"github.com/seu-usuario/go-microservices-architecture/services/order/internal/service"
+	grpcServer "github.com/seu-usuario/go-microservices-architecture/services/order/internal/transport/grpc"
+	"github.com/seu-usuario/go-microservices-architecture/services/order/proto"
 )
 
 func main() {
-	// 🧩 Conexão com DB
+	// 🔧 Carregar variáveis de ambiente
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️  Arquivo .env não encontrado, usando variáveis de ambiente do sistema")
+	}
+
+	// 🧩 Conectar ao banco de dados
+	log.Println("🔗 Conectando ao banco de dados...")
 	db := config.ConnectDatabase()
 
-	// ⚙️ Migração automática
-	err := db.AutoMigrate(&entity.Order{})
-	if err != nil {
-		log.Fatalf("Erro ao migrar banco: %v", err)
+	// ⚙️ Executar migração automática
+	if err := config.AutoMigrate(db); err != nil {
+		log.Fatalf("❌ Erro ao executar migração: %v", err)
 	}
 
-	fmt.Println("📦 Migração concluída para Order")
+	// 🏗️ Inicializar dependências
+	log.Println("🏗️  Inicializando dependências...")
+	orderRepo := repository.NewOrderRepository(db)
+	orderService := service.NewOrderService(orderRepo)
+	orderGRPCServer := grpcServer.NewOrderGRPCServer(orderService)
 
-	// 🚀 Inicializa servidor gRPC (placeholder)
-	port := ":50053"
-	lis, err := net.Listen("tcp", port)
+	// 🚀 Configurar servidor gRPC
+	port := config.GetEnv("SERVICE_PORT", "50053")
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		log.Fatalf("Erro ao iniciar servidor: %v", err)
+		log.Fatalf("❌ Erro ao iniciar listener: %v", err)
 	}
 
-	fmt.Printf("🚀 OrderService rodando em gRPC %s\n", port)
+	// 📡 Criar e configurar servidor gRPC
 	s := grpc.NewServer()
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Erro ao servir: %v", err)
-	}
+	proto.RegisterOrderServiceServer(s, orderGRPCServer)
+
+	// 🎯 Iniciar servidor em goroutine
+	go func() {
+		log.Printf("🚀 OrderService rodando em gRPC :%s", port)
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("❌ Erro ao servir gRPC: %v", err)
+		}
+	}()
+
+	// 🛡️ Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("🛑 Desligando OrderService...")
+	s.GracefulStop()
+	log.Println("✅ OrderService desligado com sucesso")
 }
