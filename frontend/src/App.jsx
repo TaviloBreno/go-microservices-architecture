@@ -1,143 +1,241 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Sidebar from './components/Sidebar';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Badge } from './components/ui/badge';
+import { cn } from './lib/utils';
 
-// Componentes sem Apollo por enquanto
-import Header from './components/HeaderSimple';
-
-// Páginas simplificadas
+// Páginas com shadcn/ui
 const Dashboard = () => (
-  <div className="min-h-screen bg-gray-50">
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">🎯 Dashboard</h1>
-          <p className="text-gray-600 mb-6">Frontend React funcionando! 🚀</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">📦 Pedidos</h3>
-              <p className="text-3xl font-bold text-blue-600">--</p>
-              <p className="text-sm text-gray-500">Aguardando conexão GraphQL</p>
+  <div className="p-6 space-y-6">
+    <div className="mb-6">
+      <h1 className="text-3xl font-bold text-foreground mb-2">🎯 Dashboard</h1>
+      <p className="text-muted-foreground">Frontend React funcionando com autenticação e shadcn/ui! 🚀</p>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">📦 Total de Pedidos</CardTitle>
+          <div className="text-2xl">📦</div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-primary">--</div>
+          <p className="text-xs text-muted-foreground">
+            Aguardando conexão GraphQL
+          </p>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">💳 Pagamentos</CardTitle>
+          <div className="text-2xl">💳</div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-green-600">--</div>
+          <p className="text-xs text-muted-foreground">
+            Aguardando conexão GraphQL
+          </p>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">🔔 Notificações</CardTitle>
+          <div className="text-2xl">🔔</div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-purple-600">--</div>
+          <p className="text-xs text-muted-foreground">
+            Aguardando conexão GraphQL
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+    
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          🔧 Status da Aplicação
+        </CardTitle>
+        <CardDescription>
+          Estado atual dos componentes e serviços
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">React 18 + Vite</span>
+              <Badge variant="success">Funcionando</Badge>
             </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">💳 Pagamentos</h3>
-              <p className="text-3xl font-bold text-green-600">--</p>
-              <p className="text-sm text-gray-500">Aguardando conexão GraphQL</p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Shadcn/ui</span>
+              <Badge variant="success">Carregado</Badge>
             </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">🔔 Notificações</h3>
-              <p className="text-3xl font-bold text-purple-600">--</p>
-              <p className="text-sm text-gray-500">Aguardando conexão GraphQL</p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Autenticação</span>
+              <Badge variant="success">Ativo</Badge>
             </div>
           </div>
-          
-          <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="text-lg font-medium text-blue-900 mb-2">🔧 Status da Aplicação</h4>
-            <ul className="text-sm text-blue-800">
-              <li>✅ React 18 + Vite funcionando</li>
-              <li>✅ Tailwind CSS carregado</li>
-              <li>✅ React Router configurado</li>
-              <li>⏳ Aguardando BFF GraphQL (porta 8080)</li>
-            </ul>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Sidebar Responsiva</span>
+              <Badge variant="success">Funcionando</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">BFF GraphQL</span>
+              <Badge variant="warning">Aguardando</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Microserviços</span>
+              <Badge variant="warning">Offline</Badge>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   </div>
 );
 
 const OrdersPage = () => (
-  <div className="min-h-screen bg-gray-50">
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">📦 Pedidos</h1>
-        <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600">Página de pedidos - Aguardando integração GraphQL</p>
-        </div>
-      </div>
+  <div className="p-6 space-y-6">
+    <div className="mb-6">
+      <h1 className="text-3xl font-bold text-foreground mb-2">📦 Pedidos</h1>
+      <p className="text-muted-foreground">Gerenciamento de pedidos do sistema</p>
     </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Lista de Pedidos</CardTitle>
+        <CardDescription>
+          Acompanhe todos os pedidos do sistema em tempo real
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground">Aguardando integração GraphQL para exibir dados reais...</p>
+      </CardContent>
+    </Card>
   </div>
 );
 
 const PaymentsPage = () => (
-  <div className="min-h-screen bg-gray-50">
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">💳 Pagamentos</h1>
-        <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600">Página de pagamentos - Aguardando integração GraphQL</p>
-        </div>
-      </div>
+  <div className="p-6 space-y-6">
+    <div className="mb-6">
+      <h1 className="text-3xl font-bold text-foreground mb-2">💳 Pagamentos</h1>
+      <p className="text-muted-foreground">Controle de transações financeiras</p>
     </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Transações</CardTitle>
+        <CardDescription>
+          Monitore todas as transações e pagamentos
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground">Aguardando integração GraphQL para exibir dados reais...</p>
+      </CardContent>
+    </Card>
   </div>
 );
 
 const NotificationsPage = () => (
-  <div className="min-h-screen bg-gray-50">
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">🔔 Notificações</h1>
-        <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600">Página de notificações - Aguardando integração GraphQL</p>
-        </div>
-      </div>
+  <div className="p-6 space-y-6">
+    <div className="mb-6">
+      <h1 className="text-3xl font-bold text-foreground mb-2">🔔 Notificações</h1>
+      <p className="text-muted-foreground">Central de notificações do sistema</p>
     </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Central de Notificações</CardTitle>
+        <CardDescription>
+          Todas as notificações enviadas pelo sistema
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground">Aguardando integração GraphQL para exibir dados reais...</p>
+      </CardContent>
+    </Card>
   </div>
 );
 
-// Layout principal
-const Layout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50">
-    <Header />
-    <main>{children}</main>
-  </div>
-);
+// Layout principal com sidebar
+const MainLayout = ({ children }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      <Sidebar 
+        isCollapsed={sidebarCollapsed} 
+        setIsCollapsed={setSidebarCollapsed}
+      />
+      <main className={cn(
+        "flex-1 overflow-hidden transition-all duration-300",
+        "lg:ml-0"
+      )}>
+        <div className="lg:pl-4 pt-16 lg:pt-0">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+};
 
 // Página 404
 const NotFound = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center">
-      <div className="text-6xl font-bold text-gray-300 mb-4">404</div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Página não encontrada</h1>
-      <p className="text-gray-600 mb-8">A página que você está procurando não existe.</p>
-      <a href="/" className="btn-primary">
-        Voltar ao Dashboard
-      </a>
-    </div>
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="text-6xl font-bold text-muted mb-4">404</div>
+        <CardTitle>Página não encontrada</CardTitle>
+        <CardDescription>
+          A página que você está procurando não existe.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="text-center">
+        <a href="/" className="btn-primary">
+          Voltar ao Dashboard
+        </a>
+      </CardContent>
+    </Card>
   </div>
 );
 
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <Routes>
-          <Route path="/" element={
-            <Layout>
-              <Dashboard />
-            </Layout>
-          } />
-          <Route path="/orders" element={
-            <Layout>
-              <OrdersPage />
-            </Layout>
-          } />
-          <Route path="/payments" element={
-            <Layout>
-              <PaymentsPage />
-            </Layout>
-          } />
-          <Route path="/notifications" element={
-            <Layout>
-              <NotificationsPage />
-            </Layout>
-          } />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <ProtectedRoute>
+            <Routes>
+              <Route path="/" element={
+                <MainLayout>
+                  <Dashboard />
+                </MainLayout>
+              } />
+              <Route path="/orders" element={
+                <MainLayout>
+                  <OrdersPage />
+                </MainLayout>
+              } />
+              <Route path="/payments" element={
+                <MainLayout>
+                  <PaymentsPage />
+                </MainLayout>
+              } />
+              <Route path="/notifications" element={
+                <MainLayout>
+                  <NotificationsPage />
+                </MainLayout>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ProtectedRoute>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
