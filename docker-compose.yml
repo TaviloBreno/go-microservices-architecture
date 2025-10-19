@@ -204,6 +204,28 @@ services:
       retries: 3
       start_period: 40s
 
+  # ---------------------------
+  # 🎨 FRONTEND REACT
+  # ---------------------------
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    depends_on:
+      bff-graphql:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - micro_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 networks:
   micro_net:
     driver: bridge
